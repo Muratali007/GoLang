@@ -15,10 +15,13 @@ import (
 
 func (app *application) readIDParam(r *http.Request) (int64, error) {
 	params := httprouter.ParamsFromContext(r.Context())
+
 	id, err := strconv.ParseInt(params.ByName("id"), 10, 64)
+
 	if err != nil || id < 1 {
 		return 0, errors.New("invalid id parameter")
 	}
+
 	return id, nil
 }
 
@@ -114,4 +117,17 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 		return defaultValue
 	}
 	return i
+}
+
+func (app *application) background(fn func()) {
+	app.wg.Add(1)
+	go func() {
+		defer app.wg.Done()
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.PrintError(fmt.Errorf("%s", err), nil)
+			}
+		}()
+		fn()
+	}()
 }
